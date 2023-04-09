@@ -1,0 +1,22 @@
+<html>
+    <head>
+
+    </head>
+    <body>
+        <script type='module'>
+            import {BST} from './js/bst.mjs'
+
+            let tester = new BST(function(A,B){
+                return A - B;
+            })
+
+            let addNums = [8, 12, 4, 3, 16, 7, 6]
+            for( let num of addNums ){
+                tester.add(num);
+            }
+
+            //tester.remove(4);
+            console.log( tester.inOrder());
+        </script>
+    </body>
+</html>

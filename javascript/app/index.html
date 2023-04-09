@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset='UTF-8'/>
+
+        <style type='text/css'>
+            * {
+                padding: 0;
+                margin: 0;
+                font-size: 14pt;
+                box-sizing: border-box;
+            }
+            :root {
+                --color-primary: rgb(33, 168, 60, 0.75);
+                --color-primary-active: rgba(24, 24, 24, 0.75);
+            }
+
+            body{
+                overflow: hidden;
+            }
+
+            div#workSpace {
+                display: flex;
+                flex-wrap: nowrap;
+                justify-content: flex-start;
+            }
+            div#planAccordian {
+                display: flex;
+            
+                overflow: hidden;
+                transform: translateX(-100%);
+            }
+            div#planAccordian.active {
+                transform: none;
+                overflow:visible;
+            }
+            div#planAccordian > div.accordianPanel {
+                border: 1px solid black;
+                flex-grow: 1;
+            }
+            div#planAccordian div.accordianHeader {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+
+                padding: 5px;
+                min-height: 42px;
+                background-color: var(--color-primary-active);
+                color: white;
+                font-weight: bold;
+            }
+            div#planAccordian div.accordianTools {
+                display: flex;
+                justify-content: space-between;
+                background-color: var(--color-primary);
+                border: 2px solid black;
+            }
+            div#planAccordian div.accordianTools .tool{
+                border: 0;
+            }
+
+            div.planItem {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 5px;
+
+                position: relative;
+                border-top: 1px solid black;
+                border-bottom: 1px solid black;
+            }
+            div.planItem > div {
+                margin: 0.5em;
+            }
+            div.planItem > div.fa-info-circle:hover {
+                cursor: pointer;
+                color: var(--color-primary-active);
+
+            }
+            div.planInfo {
+                position: absolute;
+                padding: 5px;
+                border: 3px solid black;
+
+                background-color: white;
+                left: 100%;
+                z-index: -1;
+                opacity: 0;
+
+                transition: visibility 0s 500ms, z-index 0s 500ms, opacity 250ms ease-in;
+                pointer-events: none;
+            }
+            div.planInfo.active {
+                display: visible;
+                z-index: 3;
+                opacity: 1;
+                pointer-events: all;
+                transition: visibility 0s 0ms, z-index 0s 0ms, opacity 250ms ease-in;
+            }
+            
+            div#drawingSpace {
+                position: relative;
+            }
+
+            div#toolsPalette {
+                top: 50%;
+                left: 0;
+                transform: translateY(-50%);
+                background-color: var(--color-primary);
+            }
+            div#selectedPalette {
+                display: flex;
+                left: 0;
+                bottom: 0;
+            }
+
+            div.tool {
+                text-transform: capitalize;
+                border: 2px solid black;
+                border-left: 0;
+
+                min-height: 42px;
+                min-width: 42px;
+                padding: 5px;
+                font-size: 16pt;
+                font-weight: bold;
+                background-color: var(--color-primary);
+
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+
+                position: relative;
+                overflow: visible;
+            }
+            div.tool > div.tooltip{
+                visibility: hidden;
+                position: absolute;
+
+                left: 110%;
+                top: 50%;
+                transform: translateY(-50%);
+
+                background-color: black;
+                color: white;
+
+                padding: 5px;
+                opacity: 0;
+                z-index: -1;
+                transition: visibility 0s 500ms, z-index 0s 500ms, opacity 250ms ease-in;
+            }
+
+            div.tool:hover {
+                background-color:var(--color-primary-active);
+                color: white;
+                cursor: pointer;
+            }
+            div.tool:hover > div.tooltip {             
+                opacity: 1;
+                z-index: 3;
+                visibility: visible;
+                transition: visibility 0s 0ms, z-index 0s 0ms, opacity 250ms ease-in;
+            }
+            div.tool.active {
+                background-color:var(--color-primary-active);
+                color: white;
+            }
+
+            div#canvasView {
+                min-width: 100vw;
+                min-height: 100vh;
+            }
+
+            div#deleteButton {
+                color: rgb(201, 11, 11);
+            }
+            div#deleteButton:hover {
+                background-color: rgba(122, 6, 6, 0.75);
+                color: white;
+            }
+            div#planIndexTool {
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+
+            /* Docks Formatting - assume horizontal, floating */
+            div.dock {
+                position: absolute;
+                display: flex;
+            }
+            div.dock.vertical {
+                flex-direction: column;
+            }
+
+            canvas{
+                max-width: 100vw;
+                max-height: 100vh;
+            }
+       
+        </style>
+
+        <link rel='stylesheet' href='/css/fa-all.min.css' type='text/css' />
+    </head>
+    <body>
+
+        <div id='workSpace'>
+            <div id='planAccordian'>
+                <div id='planBooks' class='accordianPanel'>
+                    <div class='accordianHeader'>Plans</div>
+                    <div class='accordianTools'>
+                        <div id='sortPlansButton' class='tool fas fa-align-center'>
+                            <div class='tooltip'>Sort</div>
+                        </div>
+                        <div id='newPlanButton' class='tool fas fa-plus-square'>
+                            <div class='tooltip'>New</div>
+                        </div>
+                    </div>
+                    <div class='accordianContent'>
+                    </div>
+                </div>
+            </div>
+            <div id='drawingSpace'>
+                <div id='canvasView'></div>
+
+                <div id='planIndexTool' class='fas fa-map tool'></div>
+                <div id='toolsPalette' class='dock vertical'></div>
+                <div id='selectedPalette' class='dock'>
+                    <div id='deleteButton' class='tool far fa-trash-alt'>
+                        <div class='tooltip'>Delete</div>
+                    </div>
+                    <div id='propertiesPalettes'></div>
+                </div>
+            </div>
+        </div>
+
+        <script type='text/javascript' src='js/uuid.js'></script>
+        <script type='text/javascript' src='js/pixi.js'></script>
+        <script type='module'>
+
+            import {Plan, PlanIcon} from './js/plan.mjs';
+            import {BST} from './js/bst.mjs';
+            
+            import {LineTool} from './js/linetool.mjs';
+            import {ShapesTool} from './js/shapestool.mjs';
+
+          
+
+            let app = null;
+            let activeTool = null;      // Div of current active tool
+            let registeredTools = [];   // Map of (String->Class)
+
+            let allPlans = [];          // All loaded plans
+            let selectedPlans = [];
+            let activePlan = null;        // The plan currently shown
+            let selectedShapes = []     // All shapes that currently selected
+
+
+            // Initialize our BSTs
+            // The comparators alphabetical compare the strings, but
+            // will only return 0 (equality) if the UUIDs are the same also
+            // ** This allows two plans to have the same titles
+            let sortOrder = 0;            // Which Order to use
+            let sortIcons = [{
+                iconClass: 'fa-align-center',
+                tooltip: 'Manual'
+            },
+            {
+                iconClass: 'fa-sort-amount-down',
+                tooltip: 'Ascending'
+            },
+            {
+                iconClass: 'fa-sort-amount-up',
+                tooltip: 'Descending'
+            }]
+            
+            let sortToUse = 0;
+            let sorters = [{
+                tooltip: 'Title',
+                sorter:  new BST(function(A,B){
+                    let compare = A.plan.title.toLowerCase().localeCompare(B.plan.title.toLowerCase());
+                    if( compare === 0 ){
+                        compare = A.uuid.localeCompare(B.uuid);
+                    }
+
+                    return compare
+                })
+            }]
+            
+            function init(){
+                let canvasView = document.getElementById('canvasView');
+                let toolsPalette = document.getElementById('toolsPalette');
+
+                // Initialize all our tools
+                let tools = [ LineTool, ShapesTool ];
+                for( let tool of tools ){
+                    registeredTools[tool.toolName] = tool;
+                    
+                    let toolDiv = tool.renderTool();
+                    toolDiv.classList.add('tool');
+
+                    toolDiv.addEventListener('mousedown', function(event){
+                        event.preventDefault();
+                        event.stopPropagation();
+                        switchTool(event);
+                    })
+
+                    toolsPalette.appendChild(toolDiv);
+                }
+
+                app = new PIXI.Application({
+                    width: 256,
+                    height: 256,
+                    resizeTo: canvasView,
+                    autoResize: false,
+                    resolution: devicePixelRatio,
+                    antialias: false,
+                    transparent: true,
+                    backgroundColor: 0xFFFFFF
+                });
+
+                let deleteButton = document.getElementById('deleteButton');
+                deleteButton.addEventListener('mouseup', function(event){
+                   deleteShapes();
+                })
+
+                // Allow user to use mouse on canvas
+                canvasView.addEventListener('mousedown', function(event){
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    if( activeTool !== null ){
+                        activateTool(event);
+                    }
+                    else {
+                        // No Active tool, so see if need to pass the
+                        // MouseDown to one of the selected shapes
+                        let mouseDownPoint = new PIXI.Point(event.offsetX, event.offsetY);
+                        
+                        let inShape = false;
+                        for( let shape of selectedShapes ){
+                            if( shape.contains(mouseDownPoint)){
+                                inShape = true;
+                                break;
+                            }
+                        }
+                        if( inShape === false ) {
+                            for( let shape of selectedShapes ){
+                                shape.selected = false;
+                            }
+                            selectedShapes = [];
+                            let optionsPalette = document.getElementById('propertiesPalettes');
+                            optionsPalette.innerHTML = '';
+
+                            for( let shape of activePlan.shapes ){
+                                if( shape.contains(mouseDownPoint)){
+                                    selectedShapes.push( shape );
+                                    shape.selected = true;
+
+                                    optionsPalette.appendChild(shape.propertiesPalette())
+                                    break;
+                                }
+                            }
+                        }
+                        else {
+                            let eventHandled = false;
+                            for( let shape of selectedShapes ){
+                                if( shape.contains(mouseDownPoint) ){
+                                    eventHandled = shape.mouseDown(event) || eventHandled;
+                                }
+                            }
+
+                            // Event wasn't handled by a selected shape, 
+                            //  so deselect everything
+                            if( !eventHandled ){
+                                for(let shape of selectedShapes){
+                                    shape.selected = false;
+                                }
+                                selectedShapes = []
+                                let optionsPalette = document.getElementById('propertiesPalettes');
+                                optionsPalette.innerHTML = '';
+                            }
+                        }
+                    }
+                })
+
+                // Allow selected shapes to recieve a mouse movement
+                canvasView.addEventListener('mousemove', function(event){
+                    event.preventDefault();
+                    event.stopPropagation();
+                    for( let shape of selectedShapes ){
+                        shape.mouseMove(event);
+                    }
+                })
+
+                // Allow selected shape to recieve a mouse up event
+                canvasView.addEventListener('mouseup', function(event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    for( let shape of selectedShapes ){
+                        shape.mouseUp(event);
+                    }
+                })
+
+                // Global key handler
+                document.addEventListener('keyup', function(event){
+                    switch( event.which ){                        
+                        // ESC key
+                        case 27:
+                            // De-select the current tool
+                            if( activeTool !== null && selectedShapes.length === 0 ){
+                                let tool = document.querySelector('.tool.active');
+                                tool.classList.remove('active');
+                                activeTool = null;
+                            }
+                            else {
+                                // De-select the current shape
+                                for( let shape of selectedShapes ){
+                                    shape.selected = false;
+                                }
+                                selectedShapes = [];
+
+                                let propPalette = document.getElementById('propertiesPalettes');
+                                propPalette.innerHTML = '';
+                            }
+                            
+                            break;
+                        // Delete Key -- delete selected shapes
+                        case 46:
+                            if( selectedShapes.length > 0 ){
+                                deleteShapes();
+                            }
+                            break;
+                    }
+                })
+
+                // Attach event listener to the new plans button
+                let newButton = document.querySelector('div#planBooks > div.accordianTools > div.fa-plus-square')
+                newButton.addEventListener('click', function(event){
+                    if( event.target.innerText.toLowerCase() === 'new' ){
+                        createNewPlan(event.target.parentNode.nextElementSibling);
+                    }
+                    else{
+                        deletePlans();
+                    }
+                })
+
+                let sortButton = document.querySelector('div#planBooks > div.accordianTools > div.fa-align-center')
+                sortButton.addEventListener('click', function(event){
+                    event.stopPropagation();
+
+                    event.target.classList.remove(sortIcons[sortOrder].iconClass);
+                    sortOrder = (sortOrder+1)%sortIcons.length;
+                    event.target.classList.add(sortIcons[sortOrder].iconClass);
+                    
+                    if( sortOrder !== 0 ){
+                        orderPlansIndex(event.target.parentNode.nextElementSibling, sorters[sortToUse].sorter);
+                    }
+                    
+                })
+
+                let planIndexTool = document.getElementById('planIndexTool');
+                planIndexTool.addEventListener('click', function(event){
+                    event.target.classList.toggle('active');
+                    document.getElementById('planAccordian').classList.toggle('active');
+                })
+
+                // We either make a new plan or use the first loaded one
+                if( allPlans.length === 0 ){
+                    createNewPlan(newButton.parentNode.nextElementSibling);
+                }
+                else {
+                    activePlan = allPlans[0];
+                }
+                canvasView.appendChild(app.view);
+            }
+
+            /**
+             * Uses the active tool to interact with the canvas
+             * @param event the location clicked on the canvas
+             */
+            function activateTool(event){
+               
+                // Send the mouse click to all selected shapes
+                let stayActivated = false;
+                for( let shape of selectedShapes){
+                    stayActivated = shape.mouseDown(event) || stayActivated;
+                }  
+
+                // No shape wanted the event, so deselect everything
+                if( stayActivated === false ){
+                    for(let shape of selectedShapes ){
+                        shape.selected = false;
+                    }
+                    selectedShapes = [];
+                    let optionsPalette = document.getElementById('propertiesPalettes');
+                    optionsPalette.innerHTML = '';
+
+                }
+                // No selected Shapes, so we definitely make a new shape
+                if( selectedShapes.length === 0 ){
+
+                    // Grab the Class associated with the active tool
+                    let toolID = activeTool.getAttribute('data-tool');
+                    let tool = registeredTools[toolID];
+                    
+                    // Add the tool to the drawing workspace
+                    let shape = new tool();
+                    app.stage.addChild(shape.view);
+
+                    // Register the shape and select it
+                    activePlan.addShape(shape, 0);
+                    selectedShapes = [shape];
+
+                    let optionsPalette = document.getElementById('propertiesPalettes')
+                    let toolPropertiesPalette = shape.propertiesPalette();
+                    toolPropertiesPalette.classList.add('propertiesPalette')
+                    optionsPalette.appendChild(toolPropertiesPalette);
+
+                    shape.selected = true;
+                    shape.mouseDown(event)
+                }
+            }
+
+            /**
+             * Switches from one tool to another
+             * @param event event which caused the switch
+             */
+            function switchTool(event) {
+                let activeToolID = '';
+
+                // Remove the active status of the current tool
+                if( activeTool !== null ){
+                    activeToolID = activeTool.getAttribute('data-tool');
+                    activeTool.classList.remove('active');
+                }
+                
+                // Set the active status of the selected tool
+                if( event.target.getAttribute('data-tool') !== activeToolID){
+                    activeTool = event.target;
+                    activeTool.classList.add('active');
+                }
+                else {
+                    activeTool = null;   
+                }
+
+
+                let optionsPalette = document.getElementById('propertiesPalettes');
+                optionsPalette.innerHTML = '';
+
+                // Deselect everything
+                for( let shape of selectedShapes ){
+                        shape.selected = false;
+                }
+                selectedShapes = [];                
+
+            }
+
+            /**
+             * Delete either the selected shapes or all if none are selected
+             */
+            function deleteShapes(){
+                if(selectedShapes.length === 0 ){
+                    app.renderer.clear();
+                    activePlan.clearShapes();
+                }
+                
+                for( let shape of selectedShapes ){
+                    let spot = activePlan.shapes.indexOf(shape);
+                    if( spot >= 0 ){
+                        activePlan.shapes[spot].view.clear();
+                        activePlan.removeShape(spot);
+                    }
+                    selectedShapes = [];
+                }
+
+                let propPalette = document.getElementById('propertiesPalettes');
+                propPalette.innerHTML = '';
+            }
+
+            /**
+             * Create a new plan
+             * @param planContainer the HTMLNode where we need to add the PlanIcon
+             */
+            function createNewPlan(plansContainer){                
+                // Clear off the world
+                if( activePlan !== null ){
+                    for( let shape of activePlan.shapes ){
+                        shape.view.clear();
+                   }
+                   selectedShapes = [];
+                }
+                                
+                activePlan = new Plan();
+                let planIcon = new PlanIcon(activePlan);
+                activePlan.view = planIcon;
+
+                let planItem = document.createElement('div');
+                planItem.classList.add('planItem');
+                planItem.setAttribute('data-id', uuidv4())
+
+                let icon = planIcon.updateIcon();
+
+                let infoIcon = document.createElement('div');
+                infoIcon.classList.add('fas');
+                infoIcon.classList.add('fa-info-circle');
+                infoIcon.addEventListener('click', function(event){
+                    let info = planItem.querySelector('div.planInfo');
+                    let uuid = planItem.getAttribute('data-id'); 
+
+                    // When the text box is focued, remove the element
+                    // from our BSTs (so we can put it back in later)
+                    let handleFocus = function(event){   
+                        for( let sorter of sorters ){
+                            if( sorter.sorter !== null ){
+                                sorter.sorter.remove({
+                                    uuid,
+                                    plan: allPlans[uuid]
+                                })    
+                            }
+                        }
+                    }
+                    let handleEnter = function(event) {
+                        if( event.which === 13) {
+                            offClick(event);
+                        }
+                    }
+
+                    // When the user click out of the text box,
+                    // we put the item back into the BST
+                    let offClick = function(event){
+                        info.classList.remove('active');
+                        // Since editing is done, add back into the tree
+                        for( let sorter of sorters ){
+                            if( sorter.sorter !== null ){
+                                sorter.sorter.add({
+                                    uuid,
+                                    plan: allPlans[uuid]
+                                })    
+                            }
+                        }
+                        document.body.removeEventListener('click', offClick);
+                        info.querySelector('input').removeEventListener('keyup', handleEnter);
+                        info.querySelector('input').removeEventListener('focus', handleFocus);
+                    
+                        // Update Plans Index Based on current sorting
+                        if( sortOrder !== 0 ){
+                            orderPlansIndex(plansContainer, sorters[sortToUse].sorter);
+                        }
+                    }
+                    info.classList.add('active');
+                    document.body.addEventListener('click', offClick);
+                    info.querySelector('input').addEventListener('keyup', handleEnter);
+                    info.querySelector('input').addEventListener('focus', handleFocus);
+                });
+
+                planItem.appendChild(icon);
+                planItem.appendChild(infoIcon);
+                planItem.appendChild(planIcon.updateInfo());
+
+                // The plan was selected, so switch the display to that plan
+                planItem.addEventListener('click', function(event){
+                    event.stopPropagation();
+                    
+                    let id = planItem.getAttribute('data-id');
+                    selectedShapes = [];
+
+                   for( let shape of activePlan.shapes ){
+                       shape.view.clear();
+                   }
+                   activePlan = allPlans[id];
+                   for( let shape of activePlan.shapes ){
+                       shape.selected = false;
+                       shape.render();
+                   }
+
+                })
+
+                let uuid = planItem.getAttribute('data-id');
+                plansContainer.prepend(planItem);
+                allPlans[uuid] = activePlan;
+
+                // Add the new plan to our BSTs for sorting
+                for( let sorter of sorters ){
+                    if( sorter.sorter !== null ){
+                        sorter.sorter.add({
+                            uuid,
+                            plan: activePlan
+                        })    
+                    }
+                }
+                
+                // Reset the ordering to manual
+                sortOrder = 0;
+                let sortButton = document.getElementById('sortPlansButton');
+                for( let s of sortIcons ){
+                    sortButton.classList.remove(s.iconClass);
+                }
+                sortButton.classList.add(sortIcons[sortOrder].iconClass)
+            }
+
+            function deletePlans() {
+            }
+
+            function orderPlansIndex(plansIndexContainer, bstree){
+                // No sorter so get out
+                if( !bstree ) { return }
+                
+                // Arrange the divs off-screen first
+                let newIndex = document.createDocumentFragment();
+
+                let indexItemDivs = plansIndexContainer.querySelectorAll('div.planItem');
+                let divsMap = []
+                for( let div of indexItemDivs ){
+                    let uuid = div.getAttribute('data-id');
+                    divsMap[uuid] = div;
+                }
+
+                let sortedItems = bstree.inOrder();
+                
+                // Otto Reed's Suggestion
+                // Reverse the list is descending order required
+                if( sortOrder === sortIcons.length-1) {
+                    sortedItems = sortedItems.reverse();
+                }
+
+                for( let item of sortedItems ){
+                    newIndex.appendChild(divsMap[item.uuid])
+                }
+
+                // Erase the contents of the container and put the new order in
+                plansIndexContainer.innerHTML = '';
+                plansIndexContainer.appendChild(newIndex);
+
+            }       
+
+            /**
+             * Capture resizing and loading events for the window
+             */
+            window.onload = init;
+            window.onresize = function(event){
+                let canvas = document.getElementById('canvasView')
+                app.renderer.resize(canvas.clientWidth, canvas.clientHeight);
+            }
+        </script>
+    </body>
+</html>
